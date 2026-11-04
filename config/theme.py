@@ -115,6 +115,31 @@ def is_valid_hex_color(value: str) -> bool:
     return True
 
 
+def _relative_luminance(hex_color: str) -> float:
+    """计算十六进制颜色的相对亮度（WCAG 定义），用于判断该颜色上该用深色还是浅色文字。"""
+    hex_part = hex_color.lstrip("#")
+    if len(hex_part) == 3:
+        hex_part = "".join(c * 2 for c in hex_part)
+    r, g, b = (int(hex_part[i:i + 2], 16) / 255 for i in (0, 2, 4))
+
+    def channel(c: float) -> float:
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = channel(r), channel(g), channel(b)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def sidebar_text_color(primary_hex: str) -> str:
+    """根据侧边栏背景色（主色）的亮度，选择对比度足够的文字颜色。
+
+    预设主题的主色均为深色，白字对比度充足；但自定义主色可能是用户选择的
+    任意浅色，此时固定使用白字会导致文字几乎不可读（需求文档 §4.3 第 7 条：
+    "确保文字与背景具有足够的对比度"）。这里用相对亮度阈值做二选一判断，
+    不追求精确的 WCAG 对比度计算，但足以避免"浅底配白字"这种明显不可读的组合。
+    """
+    return "#172B4D" if _relative_luminance(primary_hex) > 0.5 else "#FFFFFF"
+
+
 def font_scale(font_size_key: str) -> float:
     """返回字号档位对应的缩放比例，非法档位回退到标准档。"""
     return _FONT_SCALE.get(font_size_key, _FONT_SCALE[DEFAULT_FONT_SIZE])
@@ -134,6 +159,9 @@ def build_theme_css(theme_key: str, font_size_key: str, custom_primary: str | No
     background = preset.background
     scale = font_scale(font_size_key)
     base_px = round(_BASE_FONT_PX * scale, 1)
+    # 自定义主色可能是用户选择的浅色，此时侧边栏不能固定用白字（见 sidebar_text_color 说明）。
+    sidebar_text = sidebar_text_color(primary)
+    sidebar_text_secondary = "rgba(23,43,77,0.65)" if sidebar_text == "#172B4D" else "rgba(255,255,255,0.7)"
 
     return f"""
 <style>
@@ -147,6 +175,7 @@ def build_theme_css(theme_key: str, font_size_key: str, custom_primary: str | No
         --flowlens-error: {COLOR_ERROR};
         --flowlens-text: {COLOR_TEXT};
         --flowlens-text-secondary: {COLOR_TEXT_SECONDARY};
+        --flowlens-sidebar-text: {sidebar_text};
         --flowlens-font-scale: {scale};
         --flowlens-font-base: {base_px}px;
     }}
@@ -166,13 +195,13 @@ def build_theme_css(theme_key: str, font_size_key: str, custom_primary: str | No
         background: var(--flowlens-primary);
     }}
     [data-testid="stSidebar"] * {{
-        color: #ffffff !important;
+        color: var(--flowlens-sidebar-text) !important;
     }}
     [data-testid="stSidebar"] [data-testid="stCaptionContainer"] {{
-        color: rgba(255,255,255,0.7) !important;
+        color: {sidebar_text_secondary} !important;
     }}
     [data-testid="stSidebar"] a {{
-        color: #ffffff !important;
+        color: var(--flowlens-sidebar-text) !important;
     }}
     [data-testid="stSidebarNavLink"][aria-current="page"] {{
         background-color: var(--flowlens-accent) !important;

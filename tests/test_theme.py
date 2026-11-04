@@ -89,6 +89,29 @@ class TestFontScale(unittest.TestCase):
         self.assertEqual(font_scale("huge"), font_scale(DEFAULT_FONT_SIZE))
 
 
+class TestSidebarTextColor(unittest.TestCase):
+    """回归测试：浅色自定义主色不应导致侧边栏白字不可读（验收阶段发现的问题）。"""
+
+    def test_dark_primary_uses_white_text(self):
+        from config.theme import sidebar_text_color
+
+        self.assertEqual(sidebar_text_color("#172B4D"), "#FFFFFF")
+
+    def test_light_primary_uses_dark_text(self):
+        from config.theme import sidebar_text_color
+
+        self.assertEqual(sidebar_text_color("#F0E68C"), "#172B4D")
+
+    def test_css_uses_dark_sidebar_text_for_light_custom_color(self):
+        css = build_theme_css("navy", "medium", custom_primary="#F0E68C")
+        self.assertIn("--flowlens-sidebar-text: #172B4D", css)
+
+    def test_css_uses_white_sidebar_text_for_preset_themes(self):
+        for theme_key in THEME_ORDER:
+            css = build_theme_css(theme_key, "medium")
+            self.assertIn("--flowlens-sidebar-text: #FFFFFF", css)
+
+
 class TestBuildThemeCss(unittest.TestCase):
     def test_css_contains_theme_colors(self):
         css = build_theme_css("navy", "medium")

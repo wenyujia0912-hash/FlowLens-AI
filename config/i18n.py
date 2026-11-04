@@ -127,7 +127,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         LANG_EN: "Click any KPI card to jump to the related list with filters applied. See \"Operations Analytics\" for the fulfillment rate definition.",
     },
     "dashboard.kpi.total_orders": {LANG_ZH: "订单总量", LANG_EN: "Total Orders"},
-    "dashboard.kpi.anomaly_orders": {LANG_ZH: "异常订单数", LANG_EN: "Orders with Anomalies"},
+    "dashboard.kpi.anomaly_orders": {LANG_ZH: "异常订单数", LANG_EN: "Anomaly Orders"},
     "dashboard.kpi.pending_anomalies": {LANG_ZH: "待处理异常", LANG_EN: "Pending Anomalies"},
     "dashboard.kpi.fulfillment_rate": {LANG_ZH: "履约完成率", LANG_EN: "Fulfillment Rate"},
     "dashboard.kpi.fulfillment_rate_help": {

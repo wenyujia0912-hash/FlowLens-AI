@@ -25,6 +25,7 @@ exports/*.csv
 .DS_Store
 .idea/
 .vscode/
+.claude/
 
 # Streamlit 本地配置（可能含个人偏好，不强制提交）
 .streamlit/secrets.toml

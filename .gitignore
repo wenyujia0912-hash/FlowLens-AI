@@ -1,0 +1,33 @@
+# 环境与密钥（技术方案 §8：API Key 只从环境变量/.env 读取，.env 不得提交）
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+
+# 数据库与导出文件（技术方案 §8："数据库文件、导出文件和缓存路径应有清晰管理方式"）
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+exports/*.xlsx
+exports/*.csv
+!exports/.gitkeep
+
+# 系统与编辑器文件
+.DS_Store
+.idea/
+.vscode/
+
+# Streamlit 本地配置（可能含个人偏好，不强制提交）
+.streamlit/secrets.toml
+
+# 用户个性化偏好（本地运行时生成，每个用户环境不同，不提交）
+config/user_preferences.json

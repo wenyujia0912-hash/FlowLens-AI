@@ -1,0 +1,19 @@
+# FlowLens AI · Streamlit 运行时配置
+#
+# 这里只设置"画布内"由浏览器 WebGL/Canvas 渲染的控件（数据表格、下拉菜单、
+# 复选框等）的基础配色，使其与 config/theme.py 的设计系统保持一致。
+# 页面级样式（字体、间距、导航、卡片等）仍由 build_theme_css() 注入的 CSS 控制。
+
+[theme]
+base = "light"
+primaryColor = "#3B5CCC"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#FAFAFA"
+textColor = "#171717"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

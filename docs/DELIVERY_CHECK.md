@@ -21,7 +21,7 @@ find . -type f -not -path "*/__pycache__/*" | sort
 
 **确认仍然需要的依赖**：
 - `streamlit`：全部5个页面和`app.py`的硬依赖
-- `plotly`：`pages/01_dashboard.py`和`pages/05_analytics.py`使用，但代码里用`try/except ImportError`包裹，未安装时会自动降级为`st.table()`展示而不是崩溃（可以验证：删除plotly相关代码路径不会导致语法错误，降级分支本身也被覆盖在日常开发中反复执行过）
+- `plotly`：`views/01_dashboard.py`和`views/05_analytics.py`使用，但代码里用`try/except ImportError`包裹，未安装时会自动降级为`st.table()`展示而不是崩溃（可以验证：删除plotly相关代码路径不会导致语法错误，降级分支本身也被覆盖在日常开发中反复执行过）
 
 **未解决问题**：以上两个包（streamlit、plotly）的实际`pip install`过程**从未在真实网络环境下验证过**，这是全项目最大的已知限制，已在README"已知限制"第1条和"启动验收清单"中明确标注，要求网络恢复后逐项确认。
 
@@ -97,7 +97,7 @@ flowlens-ai/
 ├── .gitignore                    # 已验证覆盖密钥/数据库/缓存
 ├── app.py
 ├── config/ (2个文件)
-├── pages/ (5个页面)
+├── views/ (5个页面)
 ├── components/ (4个文件)
 ├── services/ (8个文件，含本阶段新增export_service.py)
 ├── repositories/ (4个文件)

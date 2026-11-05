@@ -112,7 +112,7 @@ flowlens-ai/
 ├── config/
 │   ├── settings.py               # 环境变量读取
 │   └── anomaly_rules.py          # 异常规则阈值集中配置
-├── pages/
+├── views/
 │   ├── 01_dashboard.py           # 运营驾驶舱
 │   ├── 02_customers_orders.py    # 客户与订单
 │   ├── 03_anomaly_center.py      # AI 异常诊断中心

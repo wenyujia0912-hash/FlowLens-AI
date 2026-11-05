@@ -17,6 +17,8 @@ from config.theme import (
     DEFAULT_THEME,
     THEME_ORDER,
     build_theme_css,
+    contrast_ratio,
+    contrast_text_color,
     font_scale,
     get_theme,
     is_valid_hex_color,
@@ -27,7 +29,8 @@ from config.theme import (
 class TestThemePresets(unittest.TestCase):
     def test_get_theme_valid_key(self):
         preset = get_theme("tech_blue")
-        self.assertEqual(preset.primary, "#2563EB")
+        self.assertEqual(preset.key, "tech_blue")
+        self.assertTrue(is_valid_hex_color(preset.primary))
 
     def test_get_theme_invalid_key_falls_back_to_default(self):
         preset = get_theme("not_a_real_theme")
@@ -69,6 +72,9 @@ class TestResolvePrimaryColor(unittest.TestCase):
         result = resolve_primary_color("navy", "#ABCDEF")
         self.assertEqual(result, "#ABCDEF")
 
+    def test_three_digit_custom_color_is_normalized(self):
+        self.assertEqual(resolve_primary_color("navy", "#abc"), "#AABBCC")
+
     def test_invalid_custom_color_falls_back_to_theme(self):
         result = resolve_primary_color("navy", "not-a-color")
         self.assertEqual(result, get_theme("navy").primary)
@@ -89,34 +95,54 @@ class TestFontScale(unittest.TestCase):
         self.assertEqual(font_scale("huge"), font_scale(DEFAULT_FONT_SIZE))
 
 
-class TestSidebarTextColor(unittest.TestCase):
-    """回归测试：浅色自定义主色不应导致侧边栏白字不可读（验收阶段发现的问题）。"""
+class TestPrimaryContrast(unittest.TestCase):
+    """回归测试：自定义主色不能导致主色块上的文字不可读。
 
-    def test_dark_primary_uses_white_text(self):
-        from config.theme import sidebar_text_color
+    侧边栏已改为浅色底，因此不再有"深色侧边栏"这一维度；新的对比度规则
+    作用于主色按钮/主色块：系统按 WCAG 对比度在深色文字与白色之间选择。
+    """
 
-        self.assertEqual(sidebar_text_color("#172B4D"), "#FFFFFF")
+    def test_light_custom_primary_uses_dark_text(self):
+        self.assertEqual(contrast_text_color("#F0E68C"), "#171717")
 
-    def test_light_primary_uses_dark_text(self):
-        from config.theme import sidebar_text_color
+    def test_dark_custom_primary_uses_white_text(self):
+        self.assertEqual(contrast_text_color("#172B4D"), "#FFFFFF")
 
-        self.assertEqual(sidebar_text_color("#F0E68C"), "#172B4D")
+    def test_chosen_text_color_meets_wcag_aa_for_normal_text(self):
+        for color in ("#3B5CCC", "#2F6B57", "#464A4F", "#F0E68C", "#E5A13B", "#FFFFFF", "#000000"):
+            chosen = contrast_text_color(color)
+            self.assertGreaterEqual(
+                contrast_ratio(chosen, color), 4.5,
+                f"{color} 上选择的文字色 {chosen} 对比度不足",
+            )
 
-    def test_css_uses_dark_sidebar_text_for_light_custom_color(self):
+    def test_css_uses_readable_text_color_for_light_custom_color(self):
         css = build_theme_css("navy", "medium", custom_primary="#F0E68C")
-        self.assertIn("--flowlens-sidebar-text: #172B4D", css)
+        self.assertIn("--fl-primary-text: #171717", css)
 
-    def test_css_uses_white_sidebar_text_for_preset_themes(self):
+    def test_css_uses_white_text_for_dark_preset_themes(self):
         for theme_key in THEME_ORDER:
             css = build_theme_css(theme_key, "medium")
-            self.assertIn("--flowlens-sidebar-text: #FFFFFF", css)
+            self.assertIn("--fl-primary-text: #FFFFFF", css)
+
+    def test_css_uses_sidebar_light_background_regardless_of_theme(self):
+        for theme_key in THEME_ORDER:
+            css = build_theme_css(theme_key, "medium")
+            self.assertIn("--fl-sidebar-bg: #FAFAFA", css)
 
 
 class TestBuildThemeCss(unittest.TestCase):
     def test_css_contains_theme_colors(self):
         css = build_theme_css("navy", "medium")
-        self.assertIn("#172B4D", css)
+        self.assertIn(get_theme("navy").primary, css)
         self.assertIn("<style>", css)
+
+    def test_css_contains_neutral_palette(self):
+        css = build_theme_css("navy", "medium")
+        for token in ("--fl-bg: #FFFFFF", "--fl-text: #171717", "--fl-text-secondary: #737373",
+                      "--fl-text-muted: #A3A3A3", "--fl-border: #EAEAEA", "--fl-hover: #F5F5F5",
+                      "--fl-selected: #F0F3F8"):
+            self.assertIn(token, css)
 
     def test_css_contains_custom_primary_when_provided(self):
         css = build_theme_css("navy", "medium", custom_primary="#ABCDEF")
@@ -128,6 +154,18 @@ class TestBuildThemeCss(unittest.TestCase):
                 css = build_theme_css(theme_key, font_key)
                 self.assertIsInstance(css, str)
                 self.assertGreater(len(css), 0)
+
+    def test_font_size_key_changes_scale_variable(self):
+        small = build_theme_css("navy", "small")
+        large = build_theme_css("navy", "large")
+        self.assertIn("--fl-scale: 0.92", small)
+        self.assertIn("--fl-scale: 1.1", large)
+
+    def test_css_contains_typography_scale_from_design_system(self):
+        css = build_theme_css("navy", "medium")
+        self.assertIn("--fl-fs-page-title", css)
+        self.assertIn("--fl-fs-kpi", css)
+        self.assertIn("--fl-fs-table", css)
 
     def test_semantic_colors_present_regardless_of_theme(self):
         """成功/警告/错误色不随主题变化，所有主题下都应出现在CSS中。"""

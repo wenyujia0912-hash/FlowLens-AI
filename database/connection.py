@@ -107,3 +107,68 @@ def is_schema_initialized(database_path: Path | None = None) -> bool:
             return row is not None
     except sqlite3.Error:
         return False
+
+
+def ensure_database_seeded(database_path: Path | None = None) -> bool:
+    """确保数据库已建表并含有模拟数据；供应用启动时调用（云端首次部署用）。
+
+    背景：本项目通过 .gitignore 排除了 database/*.db，云端部署拿到的是一份
+    没有数据库的代码副本。若不做处理，每个页面都只会提示"数据库尚未初始化，
+    请运行 python -m database.seed_data"，而 Streamlit Community Cloud 之类
+    的托管环境没有可交互终端，访客无法执行该命令，整个演示等于不可用。
+
+    行为：
+        - 已有业务表且有数据 → 什么都不做，直接返回 True（幂等，多次调用安全）。
+        - 否则按与命令行脚本完全相同的流程建表并写入模拟数据。
+          生成过程使用固定随机种子（database.seed_data.SEED），数据内容可复现；
+          时间基准相对运行当天计算，因此订单的新旧关系始终合理。
+
+    返回:
+        True 表示数据库可用（原本就有数据，或刚生成完成）；
+        False 表示自动初始化失败，调用方应提示用户手动运行 seed 脚本。
+    """
+    path = database_path or get_config().database_path
+    if is_schema_initialized(path):
+        try:
+            with get_connection(path) as conn:
+                if _count_rows(conn, "customers") > 0:
+                    return True
+        except sqlite3.Error:
+            return False
+
+    # 延迟导入：seed_data 依赖 config.anomaly_rules 等模块，且会导入较重的
+    # 生成逻辑；只在真正需要初始化时才加载，避免拖慢每次应用启动。
+    try:
+        from database import seed_data
+
+        schema_path = Path(__file__).resolve().parent / "schema.sql"
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        conn = _connect(path)
+        try:
+            seed_data.apply_schema(conn, schema_path)
+            conn.commit()
+        finally:
+            conn.close()
+
+        gen = seed_data.SeedGenerator(seed=seed_data.SEED)
+        gen.run()
+
+        conn = _connect(path)
+        try:
+            seed_data.insert_all(conn, gen)
+            conn.commit()
+        except sqlite3.Error:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+        return True
+    except Exception:  # noqa: BLE001 — 初始化失败不应让应用崩溃，交由调用方提示
+        return False
+
+
+def _count_rows(conn: sqlite3.Connection, table: str) -> int:
+    """统计表内行数（表名来自内部常量，不拼接外部输入）。"""
+    cursor = conn.execute(f"SELECT COUNT(*) FROM {table}")
+    return cursor.fetchone()[0]
